@@ -26,10 +26,12 @@ class TNC_ECC_Module:
         sigma = (s, x)
         return sigma
 
-    def Verify(self, m, sigma):
+    def Verify(self, m, sigma, AuthMode=False):
         U_prime = self.G * sigma[0] + self.pk[0] * (-sigma[1])
         V_prime = self.pk[0] * sigma[0] + self.pk[1] * (-sigma[1])
         x_prime = self.Selected_H(m, U_prime, V_prime)
+        if AuthMode:
+            return (U_prime, V_prime)
         return x_prime == sigma[1]
 
     # TNC-IBI, Kurosawa-Heng Transform.
