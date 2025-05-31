@@ -30,7 +30,7 @@ k = Aggregator_TNC_IBI.MKGen()
 print("(Aggregator) IBI initial parameters setup done.")
 
 # IBS PREP
-q = getPrime(34) # 90 bit security standard as per LB-IBS paper
+q = getPrime(90) # 90 bit security standard as per LB-IBS paper
 Aggregator_LB_IBS = LB_IBS.LB_IBI_Module(q)
 k_ibs = Aggregator_LB_IBS.Setup()
 
