@@ -1,12 +1,8 @@
 import sys
-import os
-import time
 import uuid
-
 import NeuralNetwork as NN
 import TNC_IBI
 import LB_IBS
-
 import CSVData
 import socket
 import pickle
@@ -17,22 +13,28 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from io import BytesIO
 from torch.utils.data import DataLoader
-
 import random
-import hashlib
 from ecdsa import NIST256p, ellipticcurve
 
-# -------------------- IBI SETUP --------------------
+# IBI Setup
 curve = NIST256p
 order = curve.order
 G = curve.generator
 client_TNC_IBI = TNC_IBI.TNC_ECC_Module(G, order)
-# -------------------- END IBI SETUP --------------------
+# Client identifier
+client_uuid = str(uuid.uuid4()) # Generate unique identifier, sumulation only
+# Model training
+local_model = NN.NeuralNetwork(17)
+criterion = torch.nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(local_model.parameters(), lr=0.01)
+LOCAL_EPOCHS = 2
+BATCH_SIZE = 32
 
-# Generate identifier of the client that will act as an id of the device.
-client_uuid = str(uuid.uuid4())
-
+# Helper fucntions
 def select_data(data, n, i):
+    """
+    Full description may be found in client_m.py (the same funciton)
+    """
     X = data.iloc[:, :-1].values
     y = data.iloc[:, -1].values
     total_records = len(X)
@@ -51,13 +53,8 @@ def select_data(data, n, i):
     selected_fraction_X, selected_fraction_y = fractions[i - 1]
     return selected_fraction_X, selected_fraction_y
 
-local_model = NN.NeuralNetwork(17)
-criterion = torch.nn.BCEWithLogitsLoss()
-optimizer = torch.optim.Adam(local_model.parameters(), lr=0.01)
-
-
 def trainLocalModel(model, train_loader, client_id):
-    for epoch in range(2):
+    for epoch in range(LOCAL_EPOCHS):
         model.train()
         train_loss = 0
         for X_batch, y_batch in train_loader:
@@ -90,8 +87,12 @@ def evaluateLocalModel(model, test_loader):
     print(f"Local test Accuracy: {accuracy: .3f}")
     return test_loss, accuracy
 
-
 def main(local_id):
+    """
+    Simulating geniuene client, the parameters are the exact same as for malicious clients (client_m.py, main()).
+
+    The routine is the exact same as for the malicious clients, excluding the attack injection. As such, for any references to the procedure please look at client_m.py
+    """
     print(f"Client Started, ID: {local_id}")
 
     dataContainer = pd.read_csv('split_21.csv', sep=",")
@@ -105,14 +106,14 @@ def main(local_id):
     y_test = torch.tensor(y_test, dtype=torch.float32).view(-1, 1)
     train_dataset = CSVData.CSVDataset(X_train, y_train)
     test_dataset = CSVData.CSVDataset(X_test, y_test)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     print(f"(CLIENT {local_id}) Data loaded and prepared successfully.")
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect(('10.0.2.7', 12345))
 
-        # ------------- IBI CLIENT AUTHENTICATION -------------
+        # Client Authentication
         # Inform of identity
         auth_dict = {"ibi_identity": client_uuid}
         auth_data = pickle.dumps(auth_dict)
@@ -133,16 +134,16 @@ def main(local_id):
         uks = pickle.load(buffer)
         print(f"Loading keys from the aggregator for client ID: {client_uuid}")
 
+        # IBI
         k_ibi = uks[0]
         uk_ibi = k_ibi[0]
         mpk_ibi = k_ibi[1]
-
+        # IBS
         k_ibs = uks[1]
         uk_ibs = k_ibs[0]
         mk_ibs = k_ibs[1]
         q_ibs = k_ibs[2]
         LB_IBS_Client = LB_IBS.LB_IBI_Module(q_ibs)
-
         client_TNC_IBI.pk = mpk_ibi  # store mpk
         s.sendall(b'ACK')
 
@@ -154,7 +155,6 @@ def main(local_id):
         T = G * t
         UVT = (UV_prime[0], UV_prime[1], T)
         UVT_encoded = pickle.dumps(UVT)
-
         print(f"Sending commitment to the aggregator for client ID: {client_uuid}")
         s.sendall(UVT_encoded)  # sends (U', V', T) for authentication
 
@@ -172,10 +172,9 @@ def main(local_id):
         response_data = pickle.dumps(response_dict)
         print(f"(CLIENT {client_uuid}) Solution computed. Transferring to aggregator.")
         s.sendall(response_data)
-        # ------------- END IBI CLIENT AUTHENTICATION -------------
-        s.recv(1024)
 
-        s.sendall(b'ACK') # Acknowledge completion
+        s.recv(1024) 
+        s.sendall(b'ACK') # ACK sequence
 
         # Receive global model weights.
         raw_weights = bytearray()
@@ -258,7 +257,7 @@ def main(local_id):
             except EOFError as e:
                 print(f"(CLIENT {local_id}) EOFError: shutting down connection with the server.")
                 s.close()
-                main(local_id)
+                main(local_id) 
                 break
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@ import numpy as np
 import hashlib
 from Crypto.Util.number import getPrime
 
-
 def sample_matrix(rows, cols, bound):
     return np.random.randint(-bound, bound + 1, size=(rows, cols))
 
@@ -10,9 +9,17 @@ def sample_vector(dim, bound):
     return np.random.randint(-bound, bound + 1, size=(dim, 1))
 
 class LB_IBI_Module:
+    """
+    ## WARNING ##
+
+    This is an experimental procedure using Identity-Based Signatures (IBS) over Lattices. 
+    It is completely isolated from IBI authentication used for experiments in: https://arxiv.org/abs/2504.03077.
+
+    Please ignore for now, currently in a state of development. 
+    """
     def __init__(self, q):
-        # pg. 10, Table 1: https://icics2024.aegean.gr/wp-content/uploads/2024/08/150570198.pdf
-        # Using security level at 90 bits
+        # Table 1: https://icics2024.aegean.gr/wp-content/uploads/2024/08/150570198.pdf
+        # Using security level at 90 bits for best known-attack (BKZ blocksize for successful forgery attack)
         self.q = q
         self.n = 256
         self.m = 5
@@ -29,9 +36,7 @@ class LB_IBI_Module:
     def mod_q(self, x): # apply mod to all elements of a matrix
         return np.mod(x, self.q)
 
-    # --------------------------- LB-IBS ALGORITHMS ---------------------------
     # Note: based on average-case hardness of the SIS problem
-    # pg. 6: https://icics2024.aegean.gr/wp-content/uploads/2024/08/150570198.pdf
     def Setup(self):
         A = np.random.randint(0, self.q, size=(self.n, self.m))  # A in ℤ_q
         S = sample_matrix(self.m, self.k, self.eta)  # S with small coefficients
@@ -89,11 +94,9 @@ class LB_IBI_Module:
             return True
         else:
             return False
-    # --------------------------- END LB-IBS ALGORITHMS ---------------------------
 
-    # --------------------------- HASH FUNCTIONS ---------------------------
+
     # Could be static, added to the class for functionality separation and clarity
-
     # H1: {0,1}* → {W in {-1,0,1}^(k×k) with ||W||₁ = κ}
     def H1(self, W, identity, k, kappa):
         # Use SHA-256 and then deterministically choose κ positions.
@@ -149,5 +152,3 @@ class LB_IBI_Module:
             sign = 1 if (byte % 2 == 0) else -1
             v[idx, 0] = sign
         return v
-
-    # --------------------------- END HASH FUNCTIONS ---------------------------
