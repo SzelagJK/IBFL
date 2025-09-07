@@ -323,7 +323,7 @@ def main(local_id, atk_opt):
                 raw_feedback = pickle.dumps(signed_weights)
 
 
-                # Unpoisoned - Left for future experimentation purposes
+                # Unpoisoned
                 # feedback_weights["end"] = 0
                 # raw_feedback = pickle.dumps(feedback_weights)
 

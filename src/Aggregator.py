@@ -19,6 +19,7 @@ curve = NIST256p
 order = curve.order
 G = curve.generator
 # IBI PREP
+# Note: in IBI, setup phase done through MKGen() would be executed by a Trust Authority (TA). We combine these together for the simplicity purposes of experiment.
 Aggregator_TNC_IBI = TNC_IBI.TNC_ECC_Module(G, order)
 k = Aggregator_TNC_IBI.MKGen()
 # IBS PREP

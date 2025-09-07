@@ -33,7 +33,7 @@ BATCH_SIZE = 32
 # Helper fucntions
 def select_data(data, n, i):
     """
-    Full description may be found in client_m.py (the same funciton)
+    Full description may be found in client_m.py (identical function without any attack injections)
     """
     X = data.iloc[:, :-1].values
     y = data.iloc[:, -1].values
